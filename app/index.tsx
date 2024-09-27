@@ -1,15 +1,17 @@
-import { Text, View } from "react-native";
+import { FlatList } from "react-native-gesture-handler";
+import products from "@/assets/data/products";
+import { StyleSheet } from "react-native";
+import ProductList from "@/components/ProductList";
 
-export default function Index() {
+export default function Home() {
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <Text>Edit app/index.tsx to edit this screen.</Text>
-    </View>
+    <FlatList
+      data={products}
+      renderItem={({ item }) => <ProductList product={item} />}
+      keyExtractor={(item) => item.id.toString()}
+      numColumns={2}
+      contentContainerStyle={{gap: 10}}
+      columnWrapperStyle={{gap: 10}}
+    />
   );
 }
