@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StyleSheet } from "react-native";
+import { StyleSheet, Alert } from "react-native";
 import { Colors } from "@/constants/Colors";
 import { View, Text } from "react-native";
 import { Stack, useRouter } from "expo-router";
@@ -12,18 +12,24 @@ function SignInScreen() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const router = useRouter()
+  const router = useRouter(); // Sử dụng router để điều hướng
 
-  async function signIn(){
+  async function signIn() {
+    setLoading(true);
     let { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-    })
+      email,
+      password,
+    });
+    
+    setLoading(false);
 
-    if(!error) {
-        router.push('/(tabs)/menu')
+    if (error) {
+      Alert.alert(error.message);
+    } else if (data?.session) {
+      // Điều hướng đến trang home hoặc trang mong muốn khi đăng nhập thành công
+      router.replace("/");  // Điều hướng về trang chủ hoặc bất cứ trang nào
     }
-  };
+  }
 
   return (
     <View style={styles.container}>
@@ -35,9 +41,9 @@ function SignInScreen() {
         value={email}
         onChangeText={setEmail}
         style={styles.input}
-        autoCapitalize='none'
-        keyboardType='email-address'
-        spellCheck={false} 
+        autoCapitalize="none"
+        keyboardType="email-address"
+        spellCheck={false}
       />
 
       <Text style={styles.label}>Password</Text>

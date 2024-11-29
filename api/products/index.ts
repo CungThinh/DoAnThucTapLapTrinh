@@ -7,7 +7,7 @@ export const useFetchProducts = () => {
     queryKey: ["products"],
     queryFn: async () => {
       const { data, error } = await supabase.from("products").select("*");
-      if (error) {
+      if (error) { 
         throw new Error(error.message);
       }
       return data;

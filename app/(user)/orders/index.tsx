@@ -1,9 +1,9 @@
 import { FlatList } from "react-native";
-import orders from "@/assets/data/order";
 import OrderList from "@/components/OrderList";
+import { useMyOrderList } from "@/api/orders";
 
 export default function OrderScreen() {
-
+  const {data: orders, isLoading, error} = useMyOrderList();
 
   return (
     <FlatList

@@ -3,8 +3,10 @@ import { Redirect } from 'expo-router';
 import { useAuth } from '@/context/AuthProvider';
 import { ActivityIndicator, View, Text } from 'react-native';
 
-function index() {
+const index = () => {
   const { session, loading, isAdmin} = useAuth();
+  console.log(session);
+  console.log(isAdmin);
   
   if (loading) {
     return (
@@ -15,14 +17,15 @@ function index() {
   }
 
   if(!session) {
-    console.log(session)
     return <Redirect href={'/sign-in'} />;
   }
 
   if (isAdmin) {
+    console.log(isAdmin);
     return <Redirect href={'/(admin)/menu'} />;
   }
   else {
+    console.log(isAdmin);
     return <Redirect href={'/(user)/menu'}/>;
 
   }
