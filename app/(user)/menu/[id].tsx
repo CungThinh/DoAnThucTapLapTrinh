@@ -1,31 +1,48 @@
 import ProductDetail from "@/components/ProductDetail";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { View, Text, Image, StyleSheet, Pressable } from "react-native";
-import products from "@/assets/data/products";
 import { useState } from "react";
 import Button from "@/components/Button";
 import { useCart } from "@/context/CartProvider";
-import { PizzaSize, Product } from "@/app/types";
+import { PizzaSize } from "@/app/types";
+import { useFetchProductById } from "@/api/products";
+import { ActivityIndicator } from "react-native";
 
 const sizes: PizzaSize[] = ["S", "M", "L", "XL"];
 
 const ProductDetailScreen = () => {
   const { id } = useLocalSearchParams();
-  const product = products.find((p) => p.id.toString() === id);
-  const [sizeSelected, setSizeSelected] = useState(sizes[0])
-  const {addItem} = useCart();
-  const router = useRouter()
+  const {
+    data: product,
+    error,
+    isLoading,
+  } = useFetchProductById(parseInt(typeof id === "string" ? id : id[0]));
+  const [sizeSelected, setSizeSelected] = useState(sizes[0]);
+  const { addItem } = useCart();
+  const router = useRouter();
 
   const addToCart = () => {
-    if(!product) {
-        return;
+    if (!product) {
+      return;
     }
     addItem(product, sizeSelected);
-    router.push('/cart')
+    router.push("/cart");
+  };
+
+  if (isLoading) {
+    return (
+      <View>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  if (error) {
+    return <Text>Failed to fetch products</Text>;
   }
 
   if (!product) {
-    return <h1>Product not found</h1>;
+    return <Text>Product not found</Text>;
   }
   return (
     <View style={styles.container}>
@@ -34,14 +51,22 @@ const ProductDetailScreen = () => {
 
       <Text> Select size</Text>
       <View style={styles.option}>
-            {sizes.map((size) => 
-            <Pressable onPress={() => setSizeSelected(size)} 
-            style= {[styles.size, {
-                backgroundColor: sizeSelected === size? 'gainsboro' : 'white'
-            }]} key={size}>
-                <Text style={styles.sizeText} key={size}>{size}</Text>
-            </Pressable>
-            )}
+        {sizes.map((size) => (
+          <Pressable
+            onPress={() => setSizeSelected(size)}
+            style={[
+              styles.size,
+              {
+                backgroundColor: sizeSelected === size ? "gainsboro" : "white",
+              },
+            ]}
+            key={size}
+          >
+            <Text style={styles.sizeText} key={size}>
+              {size}
+            </Text>
+          </Pressable>
+        ))}
       </View>
       <Text style={styles.price}>${product.price}</Text>
       <Button text="Add to cart" onPress={addToCart}></Button>
@@ -62,24 +87,24 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 18,
     fontWeight: "bold",
-    marginTop: 'auto'
+    marginTop: "auto",
   },
   option: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
   },
   size: {
     width: 50,
     aspectRatio: 1,
-    borderRadius: 25, 
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginVertical: 10
+    borderRadius: 25,
+    justifyContent: "center",
+    alignItems: "center",
+    marginVertical: 10,
   },
   sizeText: {
-    fontWeight: '500',
-    fontSize: 20
-  }
+    fontWeight: "500",
+    fontSize: 20,
+  },
 });
 
 export default ProductDetailScreen;

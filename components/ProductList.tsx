@@ -1,12 +1,13 @@
 import { Product } from "@/app/types";
 import React from "react";
 import { View, Text, Image, Pressable } from "react-native";
+import { Tables } from "@/app/types";
 import { StyleSheet } from "react-native";
 import { Link, useSegments } from "expo-router";
 import { defaultPizzaImage } from "@/app/(admin)/menu/create";
 
 type ProductListItemProps = {
-  product: Product;
+  product: Tables<'products'>;
 };
 
 const ProductList = ({ product }: ProductListItemProps) => {

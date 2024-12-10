@@ -7,33 +7,8 @@ const Tab = createMaterialTopTabNavigator();
 
 export default function MenuStack() {
   return (
-    <SafeAreaView style={{flex: 1, backgroundColor: 'white'}} edges={['top']}>
-      <Tab.Navigator
-        initialRouteName="All"
-        screenOptions={{
-          tabBarActiveTintColor: "tomato",
-          tabBarInactiveTintColor: "gray",
-          tabBarIndicatorStyle: { backgroundColor: "tomato" },
-          tabBarLabelStyle: { fontSize: 12 },
-          tabBarStyle: { backgroundColor: "white" },
-        }}
-      >
-        <Tab.Screen
-          name="Active"
-          component={OrderScreen}
-          options={{ title: "Active" }}
-        />
-        <Tab.Screen
-          name="Archieved"
-          component={OrderScreen}
-          options={{ title: "Archieved" }}
-        />
-        <Tab.Screen
-          name="All"
-          component={OrderScreen}
-          options={{ title: "All" }}
-        />
-      </Tab.Navigator>
-    </SafeAreaView>
+    <Stack>
+      <Stack.Screen name="list" options={{ headerShown: false }} />
+    </Stack>
   );
 }

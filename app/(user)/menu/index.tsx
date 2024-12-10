@@ -13,10 +13,11 @@ import ProductList from "@/components/ProductList";
 // import { useFetchProducts } from "@/api/products";
 import products from "@/assets/data/products";
 import { useState } from "react";
-import Icon from "react-native-vector-icons/Ionicons"; // Import icon
+import Icon from "react-native-vector-icons/Ionicons";
+import { useFetchProducts } from "@/api/products";
 
 export default function Home() {
-  // const { data: products, error, isLoading } = useFetchProducts();
+  const { data: products, error, isLoading } = useFetchProducts();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [isFocused, setIsFocused] = useState(false);
@@ -50,17 +51,17 @@ export default function Home() {
     filteredProducts = filteredProducts?.sort((a, b) => b.price - a.price);
   }
 
-  // if (isLoading) {
-  //   return (
-  //     <View>
-  //       <ActivityIndicator />
-  //     </View>
-  //   );
-  // }
+  if (isLoading) {
+    return (
+      <View>
+        <ActivityIndicator />
+      </View>
+    );
+  }
 
-  // if (error) {
-  //   return <Text>Failed to fetch products</Text>;
-  // }
+  if (error) {
+    return <Text>Failed to fetch products</Text>;
+  }
 
   return (
     <View style={styles.container}>
