@@ -1,36 +1,53 @@
-import { CartItem, PizzaSize, Tables } from "@/app/types";
-import { createContext, PropsWithChildren, useContext, useState } from "react";
-import { randomUUID } from "expo-crypto";
-import { useAddOrders } from "@/api/orders";
-import { useRouter } from "expo-router";
-import { useAddOrderItems } from "@/api/order-items";
+import { CartItem, Tables } from '@/app/types';
+import { PropsWithChildren, createContext, useContext, useState } from 'react';
+import { randomUUID } from 'expo-crypto';
+import { useInsertOrder } from '@/api/orders';
+import { useRouter } from 'expo-router';
+import { useInsertOrderItems } from '@/api/order-items';
+import { Alert } from 'react-native';
 
-type Product = Tables<"products">;
+type Product = Tables<'products'>;
 
 type CartType = {
-  cartItems: CartItem[];
-  addItem: (product: Product, size: PizzaSize) => void;
+  items: CartItem[];
+  addItem: (product: Product, size: CartItem['size']) => void;
   updateQuantity: (itemId: string, amount: -1 | 1) => void;
+  total: number;
   getTotalCartAmount: () => number;
-  checkOut: () => void;
+  checkout: () => void;
+  removeItem: (itemId: string) => void;
+  clearCart: () => void; // Thêm clearCart vào đây
 };
 
 const CartContext = createContext<CartType>({
-  cartItems: [],
+  items: [],
   addItem: () => {},
   updateQuantity: () => {},
+  total: 0,
   getTotalCartAmount: () => 0,
-  checkOut: () => {},
+  checkout: () => {},
+  removeItem: () => {},
+  clearCart: () => {}, // Thêm clearCart vào đây
 });
 
-export const CartProvider = ({ children }: PropsWithChildren) => {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const { mutate: addOrder } = useAddOrders();
-  const { mutate: addOrderItems } = useAddOrderItems();
+const CartProvider = ({ children }: PropsWithChildren) => {
+  const [items, setItems] = useState<CartItem[]>([]); // Giỏ hàng
+  const [isLoading, setIsLoading] = useState(false); // Loading state
+  const { mutate: insertOrder } = useInsertOrder(); // API để thêm đơn hàng
+  const { mutate: insertOrderItems } = useInsertOrderItems(); // API để thêm các item vào đơn hàng
   const router = useRouter();
-  const addItem = (product: Product, size: PizzaSize) => {
-    const existingItem = cartItems.find(
-      (item) => item.product === product && item.size === size
+
+   // Thêm hàm removeItem
+   const removeItem = (itemId: string) => {
+    setItems((currentItems) => 
+      currentItems.filter((item) => item.id !== itemId)
+    );
+  };
+
+  // Thêm sản phẩm vào giỏ hàng
+  const addItem = (product: Product, size: CartItem['size']) => {
+    const existingItem = items.find(
+      (item) => item.product.id === product.id && item.size === size
     );
 
     if (existingItem) {
@@ -38,70 +55,111 @@ export const CartProvider = ({ children }: PropsWithChildren) => {
       return;
     }
 
-    const items: CartItem = {
+    const newCartItem: CartItem = {
       id: randomUUID(),
-      product: product,
+      product,
       product_id: product.id,
-      size: size,
+      size,
       quantity: 1,
     };
-    setCartItems([items, ...cartItems]);
+
+    setItems([newCartItem, ...items]);
   };
 
+  // Cập nhật số lượng sản phẩm trong giỏ hàng
   const updateQuantity = (itemId: string, amount: -1 | 1) => {
-    const updatedItem = cartItems
-      .map((item) =>
-        item.id === itemId
-          ? { ...item, quantity: item.quantity + amount }
-          : item
-      )
-      .filter((item) => item.quantity > 0);
-
-    setCartItems(updatedItem);
+    setItems(
+      items
+        .map((item) =>
+          item.id !== itemId
+            ? item
+            : { ...item, quantity: item.quantity + amount }
+        )
+        .filter((item) => item.quantity > 0)
+    );
   };
 
+  // Tính tổng giá trị giỏ hàng
   const getTotalCartAmount = () => {
-    let total = 0;
-    cartItems.forEach((item) => {
-      total += item.quantity * item.product.price;
-    });
-    return total;
+    return items.reduce(
+      (sum, item) => sum + item.quantity * item.product.price,
+      0
+    );
   };
 
-  const checkOut = () => {
+  // Xóa giỏ hàng
+  const clearCart = () => {
+    setItems([]);
+  };
+
+  // Hàm thanh toán (checkout)
+  const checkout = () => {
     const total = getTotalCartAmount();
-    addOrder(
-      { total },
+    setIsLoading(true); // Bắt đầu trạng thái loading
+
+    // Bước 1: Tạo đơn hàng
+    insertOrder(
+      { total }, // Dữ liệu order (tổng tiền)
       {
-        onSuccess: (data) => {
-          const orderItems = cartItems.map((item) => ({
-            order_id: data.id,
+        onSuccess: (orderData) => {
+          // Bước 2: Tạo các order_items từ giỏ hàng
+          const orderItems = items.map((item) => ({
+            order_id: orderData.id,
             product_id: item.product_id,
             quantity: item.quantity,
             size: item.size,
           }));
-          addOrderItems(orderItems, {
+
+          insertOrderItems(orderItems, {
             onSuccess: () => {
-              setCartItems([]);
-              router.dismiss();
-              router.push(`/(user)/orders/${data.id}`);
+              // Thành công: Xóa giỏ hàng và chuyển hướng
+              clearCart();
+              setIsLoading(false);
+              router.push(`/(user)/orders/${orderData.id}`);
+            },
+            onError: (error) => {
+              // Xử lý lỗi khi thêm order items
+              console.error('Failed to add order items:', error.message);
+              setIsLoading(false);
+              Alert.alert('Error', 'Failed to add items to the order.');
             },
           });
+        },
+        onError: (error) => {
+          // Xử lý lỗi khi tạo đơn hàng
+          console.error('Failed to create order:', error.message);
+          setIsLoading(false);
+          Alert.alert('Error', 'Failed to create order. Please try again.');
         },
       }
     );
   };
 
-  const contextValue = {
-    cartItems,
-    addItem,
-    updateQuantity,
-    getTotalCartAmount,
-    checkOut,
-  };
+  // Tổng giá trị giỏ hàng
+  const total = items.reduce(
+    (sum, item) => sum + item.quantity * item.product.price,
+    0
+  );
+
   return (
-    <CartContext.Provider value={contextValue}>{children}</CartContext.Provider>
+    <CartContext.Provider
+      value={{
+        items,
+        addItem,
+        updateQuantity,
+        total,
+        getTotalCartAmount,
+        checkout,
+        removeItem,
+        clearCart,
+      }}
+    >
+      {children}
+    </CartContext.Provider>
   );
 };
 
+export default CartProvider;
+
+// Hook sử dụng CartContext
 export const useCart = () => useContext(CartContext);

@@ -1,6 +1,6 @@
 import { Link, Stack } from "expo-router";
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
-import OrderScreen from ".";
+// import OrderScreen from ".";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const Tab = createMaterialTopTabNavigator();

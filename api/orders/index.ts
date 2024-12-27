@@ -4,22 +4,36 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthProvider";
 import { InsertTables } from "@/app/types";
 import { UpdateTables } from "@/app/types";
+import { Tables } from "@/app/types";
 
 export const useAdminOrderList = ({ archived = false }) => {
-  const statuses = archived ? ["Delivered"] : ["New", "Cooking", "Delivering"];
+  // Thay đổi cách lọc status
+  const statuses = archived 
+    ? ["Delivered"] // Archived chỉ lấy orders đã delivered
+    : ["New", "Delivering", "Cooking", "Delevering"]; // Active lấy tất cả trạng thái khác
+
   return useQuery({
     queryKey: ["orders", archived],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("*")
+        .select(`
+          *,
+          profiles!inner(*)
+        `)
         .in("status", statuses)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }); // Sắp xếp theo thời gian tạo, mới nhất lên đầu
+
       if (error) {
         throw new Error(error.message);
       }
+      // console.log('Fetched orders:', data);
       return data;
     },
+    // Thêm options để tự động refresh
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    refetchInterval: 3000,
   });
 };
 
@@ -105,6 +119,32 @@ export const useUpdateOrder = () => {
       });
       await queryClient.invalidateQueries({
         queryKey: ["orders", updatedOrder.id],
+      });
+    },
+  });
+};
+
+export const useInsertOrder = () => {
+  const queryClient = useQueryClient();
+  const { session } = useAuth();
+  const userId = session?.user.id;
+
+  return useMutation({
+    async mutationFn(data: InsertTables<'orders'>) {
+      const { error, data: newProduct } = await supabase
+        .from('orders')
+        .insert({ ...data, user_id: userId })
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+      return newProduct;
+    },
+    async onSuccess() {
+      await queryClient.invalidateQueries({
+        queryKey: ['orders']
       });
     },
   });

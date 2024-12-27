@@ -1,6 +1,7 @@
 import { useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 
+
 // Custom hook để chọn ảnh
 export const useImagePicker = () => {
   const [image, setImage] = useState<string | null>(null);
@@ -20,3 +21,4 @@ export const useImagePicker = () => {
 
   return { image, pickImage, setImage };
 };
+

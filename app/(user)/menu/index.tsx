@@ -1,260 +1,513 @@
+import React, { useState } from "react";
+import { Stack } from "expo-router";
 import {
-  FlatList,
+  View,
+  Text,
   TextInput,
   StyleSheet,
-  View,
-  ActivityIndicator,
-  Text,
+  ScrollView,
   TouchableOpacity,
+  SafeAreaView,
+  Platform,
+  StatusBar,
+  Image,
+  FlatList,
   Modal,
-  Button,
+  ActivityIndicator,
+  Pressable,
 } from "react-native";
-import ProductList from "@/components/ProductList";
-// import { useFetchProducts } from "@/api/products";
-import products from "@/assets/data/products";
-import { useState } from "react";
 import Icon from "react-native-vector-icons/Ionicons";
+import { FontAwesome } from "@expo/vector-icons";
+import { Colors } from "@/constants/Colors";
 import { useFetchProducts } from "@/api/products";
+import ProductList from "@/components/ProductList";
+import { Link } from "expo-router";
+import { useCart } from "@/context/CartProvider";
+
+function CartIcon() {
+  const { items } = useCart();
+  const itemCount = items.length;
+
+  return (
+    <Link href="/cart" asChild>
+      <Pressable>
+        {({ pressed }) => (
+          <View style={styles.cartContainer}>
+            <FontAwesome
+              name="shopping-cart"
+              size={25}
+              color={Colors.light.tint}
+              style={{ opacity: pressed ? 0.5 : 1 }}
+            />
+            {itemCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{itemCount}</Text>
+              </View>
+            )}
+          </View>
+        )}
+      </Pressable>
+    </Link>
+  );
+}
 
 export default function Home() {
   const { data: products, error, isLoading } = useFetchProducts();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [isFocused, setIsFocused] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedPriceRange, setSelectedPriceRange] = useState("All");
-  const [sortOrder, setSortOrder] = useState("none"); // Thêm state cho sắp xếp
+  const [sortOrder, setSortOrder] = useState("none");
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
-  // Tìm kiếm, lọc và sắp xếp
-  let filteredProducts = products?.filter((product) => {
-    const matchesSearchQuery = product.name
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "All" || product.category === selectedCategory;
-    const matchesPriceRange =
-      selectedPriceRange === "All" ||
-      (selectedPriceRange === "0-100" && product.price <= 100) ||
-      (selectedPriceRange === "100-200" &&
-        product.price > 100 &&
-        product.price <= 200) ||
-      (selectedPriceRange === "200-300" &&
-        product.price > 200 &&
-        product.price <= 300);
-    return matchesSearchQuery && matchesCategory && matchesPriceRange;
-  });
+  const categories = [
+    { id: 1, name: "All", icon: require("@/assets/images/BestSeller1.jpg") },
+    { id: 2, name: "Pizza", icon: require("@/assets/images/Pizza.jpg") },
+    { id: 3, name: "Drinks", icon: require("@/assets/images/Drinks.jpg") },
+    { id: 4, name: "Desserts", icon: require("@/assets/images/Desserts.jpg") },
+    { id: 5, name: "Sides", icon: require("@/assets/images/pizza-logo.png") },
+  ];
 
-  // Sắp xếp danh sách sản phẩm
-  if (sortOrder === "asc") {
-    filteredProducts = filteredProducts?.sort((a, b) => a.price - b.price);
-  } else if (sortOrder === "desc") {
-    filteredProducts = filteredProducts?.sort((a, b) => b.price - a.price);
-  }
+  // Function lọc và sắp xếp sản phẩm
+  const filterAndSortProducts = (products) => {
+    return products
+      ?.filter((product) => {
+        const matchesSearch = product.name
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase());
+        const matchesCategory =
+          selectedCategory === "All" || product.category === selectedCategory;
+        const matchesPrice =
+          selectedPriceRange === "All" ||
+          (selectedPriceRange === "0-100" && product.price <= 100) ||
+          (selectedPriceRange === "100-200" &&
+            product.price > 100 &&
+            product.price <= 200) ||
+          (selectedPriceRange === "200+" && product.price > 200);
+        return matchesSearch && matchesPrice && matchesCategory;
+      })
+      ?.sort((a, b) => {
+        if (sortOrder === "asc") return a.price - b.price;
+        if (sortOrder === "desc") return b.price - a.price;
+        return 0;
+      });
+  };
 
-  if (isLoading) {
-    return (
-      <View>
-        <ActivityIndicator />
-      </View>
-    );
-  }
-
-  if (error) {
-    return <Text>Failed to fetch products</Text>;
-  }
+  // Sắp xếp sản phẩm theo danh mục
+  const categorizedProducts = {
+    Pizza: filterAndSortProducts(products?.filter((p) => p.category === "Pizza")),
+    Drinks: filterAndSortProducts(
+      products?.filter((p) => p.category === "Drinks")
+    ),
+    Desserts: filterAndSortProducts(
+      products?.filter((p) => p.category === "Desserts")
+    ),
+    Sides: filterAndSortProducts(
+      products?.filter((p) => p.category === "Sides")
+    ),
+  };
 
   return (
-    <View style={styles.container}>
-      {/* Tìm kiếm với icon */}
-      <View
-        style={[
-          styles.searchContainer,
-          { borderColor: isFocused ? "orange" : "gray" }, // Đổi màu viền khi focus
-        ]}
-      >
-        <View style={styles.iconContainer}>
-          <Icon name="search" size={20} color="white" />
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        {/* Location Header */}
+        <View style={styles.locationHeader}>
+          <View style={styles.locationInfo}>
+            <Text style={styles.locationLabel}>Your Location</Text>
+            <View style={styles.locationRow}>
+              <Text style={styles.locationText}>3892 Olen Thomas Drive, NY</Text>
+              <Icon name="chevron-down" size={20} color="#666" />
+            </View>
+          </View>
+          <View style={styles.headerRightContainer}>
+            <TouchableOpacity style={styles.notificationButton}>
+              <Icon name="notifications-outline" size={24} color="#000" />
+            </TouchableOpacity>
+            <CartIcon />
+          </View>
         </View>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search products..."
-          value={searchQuery}
-          onChangeText={(text) => setSearchQuery(text)}
-          onFocus={() => setIsFocused(true)} // Khi TextInput được focus
-          onBlur={() => setIsFocused(false)} // Khi TextInput mất focus
-        />
 
-        {/* Nút filter kế bên nút search */}
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => setModalVisible(true)} // Mở modal khi nhấn vào nút filter
-        >
-          <Icon name="filter" size={20} color="white" />
-        </TouchableOpacity>
-      </View>
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <View style={styles.searchBar}>
+            <Icon name="search-outline" size={20} color="#666" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search foods, groceries"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor="#999"
+            />
+          </View>
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setModalVisible(true)}
+          >
+            <Icon name="filter" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
 
-      {/* Danh sách sản phẩm */}
-      <FlatList
-        data={filteredProducts}
-        renderItem={({ item }) => <ProductList product={item} />}
-        keyExtractor={(item) => item.id.toString()}
-        numColumns={2}
-        contentContainerStyle={{ gap: 10 }}
-        columnWrapperStyle={{ gap: 10 }}
-      />
+        {/* Categories */}
+        <View style={styles.categoriesSection}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.categoriesScroll}
+          >
+            {categories.map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={[
+                  styles.categoryItem,
+                  category.name === selectedCategory && styles.activeCategoryItem
+                ]}
+                onPress={() => setSelectedCategory(category.name)}
+              >
+                <View style={styles.categoryImageContainer}>
+                  <Image
+                    source={category.icon}
+                    style={styles.categoryImage}
+                  />
+                </View>
+                <Text style={[
+                  styles.categoryName,
+                  category.name === selectedCategory && styles.activeCategoryName
+                ]}>{category.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
 
-      {/* Modal filter */}
+        {/* Product Grid with Category Titles */}
+        {isLoading ? (
+          <ActivityIndicator
+            size="large"
+            color={Colors.light.tint}
+            style={styles.loader}
+          />
+        ) : (
+          <View style={styles.productsContainer}>
+            {selectedCategory === "All" || selectedCategory === "Pizza" ? (
+              <>
+                <Text style={styles.categoryTitle}>Pizza</Text>
+                <FlatList
+                  data={categorizedProducts.Pizza}
+                  renderItem={({ item }) => <ProductList product={item} />}
+                  keyExtractor={(item) => item.id.toString()}
+                  numColumns={2}
+                  contentContainerStyle={styles.productGrid}
+                  columnWrapperStyle={styles.productRow}
+                  scrollEnabled={false}
+                />
+              </>
+            ) : null}
+
+            {selectedCategory === "All" || selectedCategory === "Drinks" ? (
+              <>
+                <Text style={styles.categoryTitle}>Drinks</Text>
+                <FlatList
+                  data={categorizedProducts.Drinks}
+                  renderItem={({ item }) => <ProductList product={item} />}
+                  keyExtractor={(item) => item.id.toString()}
+                  numColumns={2}
+                  contentContainerStyle={styles.productGrid}
+                  columnWrapperStyle={styles.productRow}
+                  scrollEnabled={false}
+                />
+              </>
+            ) : null}
+
+            {selectedCategory === "All" || selectedCategory === "Desserts" ? (
+              <>
+                <Text style={styles.categoryTitle}>Desserts</Text>
+                <FlatList
+                  data={categorizedProducts.Desserts}
+                  renderItem={({ item }) => <ProductList product={item} />}
+                  keyExtractor={(item) => item.id.toString()}
+                  numColumns={2}
+                  contentContainerStyle={styles.productGrid}
+                  columnWrapperStyle={styles.productRow}
+                  scrollEnabled={false}
+                />
+              </>
+            ) : null}
+
+            {selectedCategory === "All" || selectedCategory === "Sides" ? (
+              <>
+                <Text style={styles.categoryTitle}>Sides</Text>
+                <FlatList
+                  data={categorizedProducts.Sides}
+                  renderItem={({ item }) => <ProductList product={item} />}
+                  keyExtractor={(item) => item.id.toString()}
+                  numColumns={2}
+                  contentContainerStyle={styles.productGrid}
+                  columnWrapperStyle={styles.productRow}
+                  scrollEnabled={false}
+                />
+              </>
+            ) : null}
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Filter Modal */}
       <Modal
         visible={modalVisible}
-        transparent={true}
+        transparent
         animationType="slide"
-        onRequestClose={() => setModalVisible(false)} // Đóng modal khi nhấn ra ngoài
+        onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Filter Options</Text>
-            <View style={styles.filterContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.priceButton,
-                  selectedPriceRange === "0-100" && styles.activePriceButton,
-                ]}
-                onPress={() => setSelectedPriceRange("0-100")}
-              >
-                <Text style={styles.buttonText}>0-100k</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.priceButton,
-                  selectedPriceRange === "100-200" && styles.activePriceButton,
-                ]}
-                onPress={() => setSelectedPriceRange("100-200")}
-              >
-                <Text style={styles.buttonText}>100k-200k</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.priceButton,
-                  selectedPriceRange === "200-300" && styles.activePriceButton,
-                ]}
-                onPress={() => setSelectedPriceRange("200-300")}
-              >
-                <Text style={styles.buttonText}>200k-300k</Text>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Filter & Sort</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Icon name="close" size={24} color={Colors.light.tint} />
               </TouchableOpacity>
             </View>
 
-            {/* Thêm tùy chọn sắp xếp */}
-            <Text style={styles.modalTitle}>Sort by Price</Text>
-            <View style={styles.filterContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.sortButton,
-                  sortOrder === "asc" && styles.activeSortButton,
-                ]}
-                onPress={() => setSortOrder("asc")}
-              >
-                <Text style={styles.buttonText}>Giá tăng dần</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.sortButton,
-                  sortOrder === "desc" && styles.activeSortButton,
-                ]}
-                onPress={() => setSortOrder("desc")}
-              >
-                <Text style={styles.buttonText}>Giá giảm dần</Text>
-              </TouchableOpacity>
+            {/* Price Range */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Price Range</Text>
+              <View style={styles.chipContainer}>
+                {["All", "0-100", "100-200", "200+"].map(range => (
+                  <TouchableOpacity
+                    key={range}
+                    style={[
+                      styles.chip,
+                      range === selectedPriceRange && styles.activeChip
+                    ]}
+                    onPress={() => setSelectedPriceRange(range)}
+                  >
+                    <Text style={range === selectedPriceRange ? styles.activeChipText : styles.chipText}>
+                      {range === "All" ? "All" : `$${range}`}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
 
-            <Button title="Áp dụng" onPress={() => setModalVisible(false)} />
+            {/* Sort Options */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Sort By</Text>
+              <View style={styles.chipContainer}>
+                {["none", "asc", "desc"].map(order => (
+                  <TouchableOpacity
+                    key={order}
+                    style={[
+                      styles.chip,
+                      order === sortOrder && styles.activeChip
+                    ]}
+                    onPress={() => setSortOrder(order)}
+                  >
+                    <Text style={order === sortOrder ? styles.activeChipText : styles.chipText}>
+                      {order === "none" ? "Default" : order === "asc" ? "Price: Low to High" : "Price: High to Low"}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#fff",
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+  },
   container: {
     flex: 1,
-    padding: 10,
+  },
+  locationHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  locationInfo: {
+    flex: 1,
+  },
+  locationLabel: {
+    fontSize: 12,
+    color: "#666",
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  locationText: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginRight: 4,
+  },
+  headerRightContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  notificationButton: {
+    padding: 8,
+  },
+  cartContainer: {
+    marginRight: 15,
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    right: -8,
+    top: -8,
+    backgroundColor: '#FF4444',
+    borderRadius: 12,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    paddingHorizontal: 3,
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderColor: "gray",
-    borderWidth: 2,
-    borderRadius: 8,
-    marginBottom: 10,
+    paddingHorizontal: 16,
+    gap: 12,
   },
-  iconContainer: {
-    backgroundColor: "orange",
-    padding: 10, // Điều chỉnh kích thước padding cho icon
-    justifyContent: "center",
+  searchBar: {
+    flex: 1,
+    flexDirection: "row",
     alignItems: "center",
-    borderBottomLeftRadius: 6,
-    borderTopLeftRadius: 6,
+    backgroundColor: "#f5f5f5",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   searchInput: {
-    flex: 1, // Dành không gian cho TextInput
-    height: 40,
-    paddingLeft: 8,
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 16,
   },
   filterButton: {
-    backgroundColor: "orange",
+    backgroundColor: Colors.light.tint,
     padding: 10,
-    justifyContent: "center",
+    borderRadius: 8,
+  },
+  categoriesSection: {
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  categoriesScroll: {
+    paddingLeft: 16,
+  },
+  categoryItem: {
     alignItems: "center",
-    borderTopRightRadius: 6,
-    borderBottomRightRadius: 6,
+    marginRight: 20,
   },
-  filterContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 10,
+  activeCategoryItem: {
+    opacity: 1,
   },
-  priceButton: {
-    flex: 1,
-    marginHorizontal: 5,
-    paddingVertical: 10,
-    backgroundColor: "gray",
-    borderRadius: 5,
-    justifyContent: "center",
-    alignItems: "center",
+  categoryImageContainer: {
+    width: 70,
+    height: 70,
+    borderRadius: 36,
+    backgroundColor: "#f5f5f5",
+    overflow: "hidden",
+    marginBottom: 8,
   },
-  activePriceButton: {
-    backgroundColor: "orange",
+  categoryImage: {
+    width: "100%",
+    height: "100%",
   },
-  sortButton: {
-    flex: 1,
-    marginHorizontal: 5,
-    paddingVertical: 10,
-    backgroundColor: "gray",
-    borderRadius: 5,
-    justifyContent: "center",
-    alignItems: "center",
+  categoryName: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#666",
   },
-  activeSortButton: {
-    backgroundColor: "orange",
+  activeCategoryName: {
+    color: Colors.light.tint,
+    fontWeight: "700",
   },
-  buttonText: {
-    color: "white",
+  productsContainer: {
+    paddingHorizontal: 16,
+  },
+  categoryTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: Colors.light.tint,
+    marginVertical: 12,
+  },
+  productGrid: {
+    gap: 16,
+  },
+  productRow: {
+    gap: 16,
+  },
+  loader: {
+    marginTop: 40,
   },
   modalOverlay: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)", // Màu nền tối
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
-    width: "80%",
-    padding: 20,
     backgroundColor: "white",
-    borderRadius: 10,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
   },
   modalTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: Colors.light.tint,
+  },
+  sectionContainer: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 10,
+    color: "#333",
+  },
+  chipContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  chip: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 30,
+    backgroundColor: "#f0f0f0",
+  },
+  activeChip: {
+    backgroundColor: Colors.light.tint,
+  },
+  chipText: {
+    fontSize: 18,
+    color: "#666",
+  },
+  activeChipText: {
+    color: "white",
     fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 20,
   },
 });

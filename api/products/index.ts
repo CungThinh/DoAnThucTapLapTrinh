@@ -61,16 +61,24 @@ export const useUpdateProduct = () => {
   const queryClient = useQueryClient();
   return useMutation({
     async mutationFn(data: any) {
+      // Chỉ update image khi có image mới
+      const updateData: any = {
+        name: data.name,
+        price: data.price,
+      };
+
+      // Nếu có image mới thì mới update
+      if (data.image) {
+        updateData.image = data.image;
+      }
+
       const { data: updatedProduct, error } = await supabase
         .from("products")
-        .update({
-          name: data.name,
-          image: data.image,
-          price: data.price,
-        })
+        .update(updateData)
         .eq("id", data.id)
         .select()
         .single();
+
       if (error) {
         throw new Error(error.message);
       }
@@ -107,3 +115,42 @@ export const useDeleteProduct = () => {
   });
 };
 
+export function useInsertProduct() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    async mutationFn(data: InsertProductParams) {
+      const { data: newProduct, error } = await supabase
+        .from('products')
+        .insert({
+          name: data.name,
+          price: data.price,
+          image: data.image,
+          category: data.category, // Make sure this line exists
+        })
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+      return newProduct;
+    },
+    async onSuccess() {
+      await queryClient.invalidateQueries({
+        queryKey: ["products"],
+      });
+    },
+  });
+}
+
+export type Product = {
+  id: number;
+  name: string;
+  price: number;
+  image?: string;
+  category: string;
+};
+
+// Update the insert product mutation type
+type InsertProductParams = Pick<Product, 'name' | 'price' | 'image' | 'category'>;

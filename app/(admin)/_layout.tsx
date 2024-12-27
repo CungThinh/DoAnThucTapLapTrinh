@@ -35,20 +35,29 @@ export default function TabLayout() {
           ),
         }}
       />
-      
+
       <Tabs.Screen
         name="orders"
         options={{
           title: 'Orders',
-          headerShown: false, 
+          headerShown: false,
           tabBarIcon: ({ color }) => <TabBarIcon name="list" color={color} />,
         }}
       />
       <Tabs.Screen
+        name="revenue/index"
+        options={{
+          title: "Revenue", // Tiêu đề của tab
+          headerShown: false, // Ẩn header trên màn hình
+          tabBarIcon: ({ color }) => <TabBarIcon name="money" color={color} />, // Sử dụng biểu tượng từ FontAwesome
+        }}
+      />
+        <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile', 
-          tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
+          headerShown: false, 
+          title:'Profile',
+          tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />, // Vẫn hiển thị biểu tượng
         }}
       />
     </Tabs>

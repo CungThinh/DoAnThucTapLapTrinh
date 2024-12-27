@@ -1,262 +1,225 @@
+import React, { useState } from 'react';
 import {
-  FlatList,
-  TextInput,
-  StyleSheet,
   View,
-  ActivityIndicator,
   Text,
+  TextInput,
   TouchableOpacity,
-  Modal,
-  Button,
-} from "react-native";
-import ProductList from "@/components/ProductList";
+  FlatList,
+  StyleSheet,
+  ActivityIndicator,
+  RefreshControl,
+  SafeAreaView,
+  Platform,
+  StatusBar,
+} from 'react-native';
 import { useFetchProducts } from "@/api/products";
-import { useState } from "react";
-import Icon from "react-native-vector-icons/Ionicons"; // Import icon
+import Icon from "react-native-vector-icons/Ionicons";
+import { Stack, useRouter } from "expo-router";
+import { Colors } from "@/constants/Colors";
+import RemoteImage from "@/components/RemoteImage";
+import { defaultPizzaImage } from "./create";
 
-export default function Home() {
-  const { data: products, error, isLoading } = useFetchProducts();
+const ListItem = ({ product, onPress }) => (
+  <TouchableOpacity onPress={() => onPress(product)} style={styles.listItem}>
+    <RemoteImage 
+      path={product.image}
+      fallback={defaultPizzaImage}
+      style={styles.productImage}
+    />
+    <View style={styles.itemContent}>
+      <Text style={styles.itemName}>{product.name}</Text>
+      <Text style={styles.itemPrice}>${product.price.toFixed(2)}</Text>
+    </View>
+  </TouchableOpacity>
+);
+
+export default function AdminMenu() {
+  const { data: products, error, isLoading, refetch } = useFetchProducts();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [isFocused, setIsFocused] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedPriceRange, setSelectedPriceRange] = useState("All");
-  const [sortOrder, setSortOrder] = useState("none"); // Thêm state cho sắp xếp
+  const router = useRouter();
 
-  // Tìm kiếm, lọc và sắp xếp
-  let filteredProducts = products?.filter((product) => {
-    const matchesSearchQuery = product.name
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "All" || product.category === selectedCategory;
-    const matchesPriceRange =
-      selectedPriceRange === "All" ||
-      (selectedPriceRange === "0-100" && product.price <= 100) ||
-      (selectedPriceRange === "100-200" &&
-        product.price > 100 &&
-        product.price <= 200) ||
-      (selectedPriceRange === "200-300" &&
-        product.price > 200 &&
-        product.price <= 300);
-    return matchesSearchQuery && matchesCategory && matchesPriceRange;
-  });
+  const handlePress = (product) => {
+    router.push(`/menu/${product.id}`);
+  };
 
-  // Sắp xếp danh sách sản phẩm
-  if (sortOrder === "asc") {
-    filteredProducts = filteredProducts?.sort((a, b) => a.price - b.price);
-  } else if (sortOrder === "desc") {
-    filteredProducts = filteredProducts?.sort((a, b) => b.price - a.price);
-  }
+  const filteredProducts = products?.filter(product =>
+    product.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  if (isLoading) {
-    return (
-      <View>
-        <ActivityIndicator />
-      </View>
-    );
-  }
-
-  if (error) {
-    return <Text>Failed to fetch products</Text>;
-  }
+  if (isLoading) return (
+    <SafeAreaView style={styles.loadingContainer}>
+      <ActivityIndicator />
+    </SafeAreaView>
+  );
+  
+  if (error) return (
+    <SafeAreaView style={styles.loadingContainer}>
+      <Text>Error loading products</Text>
+    </SafeAreaView>
+  );
 
   return (
-    <View style={styles.container}>
-      {/* Tìm kiếm với icon */}
-      <View
-        style={[
-          styles.searchContainer,
-          { borderColor: isFocused ? "orange" : "gray" }, // Đổi màu viền khi focus
-        ]}
-      >
-        <View style={styles.iconContainer}>
-          <Icon
-            name="search"
-            size={20}
-            color="white"
-          />
-        </View>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search products..."
-          value={searchQuery}
-          onChangeText={(text) => setSearchQuery(text)}
-          onFocus={() => setIsFocused(true)} // Khi TextInput được focus
-          onBlur={() => setIsFocused(false)} // Khi TextInput mất focus
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <Stack.Screen 
+          options={{
+            title: "",
+            headerShown: false,
+          }} 
         />
 
-        {/* Nút filter kế bên nút search */}
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => setModalVisible(true)} // Mở modal khi nhấn vào nút filter
-        >
-          <Icon name="filter" size={20} color="white" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Danh sách sản phẩm */}
-      <FlatList
-        data={filteredProducts}
-        renderItem={({ item }) => <ProductList product={item} />}
-        keyExtractor={(item) => item.id.toString()}
-        numColumns={2}
-        contentContainerStyle={{ gap: 10 }}
-        columnWrapperStyle={{ gap: 10 }}
-      />
-
-      {/* Modal filter */}
-      <Modal
-        visible={modalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)} // Đóng modal khi nhấn ra ngoài
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Filter Options</Text>
-            <View style={styles.filterContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.priceButton,
-                  selectedPriceRange === "0-100" && styles.activePriceButton,
-                ]}
-                onPress={() => setSelectedPriceRange("0-100")}
-              >
-                <Text style={styles.buttonText}>0-100k</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.priceButton,
-                  selectedPriceRange === "100-200" && styles.activePriceButton,
-                ]}
-                onPress={() => setSelectedPriceRange("100-200")}
-              >
-                <Text style={styles.buttonText}>100k-200k</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.priceButton,
-                  selectedPriceRange === "200-300" && styles.activePriceButton,
-                ]}
-                onPress={() => setSelectedPriceRange("200-300")}
-              >
-                <Text style={styles.buttonText}>200k-300k</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Thêm tùy chọn sắp xếp */}
-            <Text style={styles.modalTitle}>Sort by Price</Text>
-            <View style={styles.filterContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.sortButton,
-                  sortOrder === "asc" && styles.activeSortButton,
-                ]}
-                onPress={() => setSortOrder("asc")}
-              >
-                <Text style={styles.buttonText}>Giá tăng dần</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.sortButton,
-                  sortOrder === "desc" && styles.activeSortButton,
-                ]}
-                onPress={() => setSortOrder("desc")}
-              >
-                <Text style={styles.buttonText}>Giá giảm dần</Text>
-              </TouchableOpacity>
-            </View>
-
-            <Button title="Áp dụng" onPress={() => setModalVisible(false)} />
+        <View style={styles.topStats}>
+          <View style={styles.statBox}>
+            <Text style={styles.statNumber}>{products?.length || 0}</Text>
+            <Text style={styles.statLabel}>Total Products</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statNumber}>
+              ${products?.reduce((sum, p) => sum + p.price, 0).toFixed(2) || '0.00'}
+            </Text>
+            <Text style={styles.statLabel}>Total Value</Text>
           </View>
         </View>
-      </Modal>
-    </View>
+
+        <View style={styles.searchBox}>
+          <Icon name="search" size={20} color="#666" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search products..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor="#666"
+          />
+        </View>
+
+        <FlatList
+          data={filteredProducts}
+          renderItem={({ item }) => (
+            <ListItem
+              product={item}
+              onPress={handlePress}
+            />
+          )}
+          keyExtractor={item => item.id.toString()}
+          contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl refreshing={isLoading} onRefresh={refetch} />
+          }
+        />
+
+        {/* Floating Action Button */}
+        <TouchableOpacity 
+          style={styles.fab}
+          onPress={() => router.push("/menu/create")}
+        >
+          <Icon name="add" size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
   container: {
     flex: 1,
-    padding: 10,
+    backgroundColor: '#fff',
   },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderColor: "gray",
-    borderWidth: 2,
-    borderRadius: 8,
-    marginBottom: 10,
+  topStats: {
+    flexDirection: 'row',
+    padding: 15,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
-  iconContainer: {
-    backgroundColor: "orange",
-    padding: 10, // Điều chỉnh kích thước padding cho icon
-    justifyContent: "center",
-    alignItems: "center",
-    borderBottomLeftRadius: 6,
-    borderTopLeftRadius: 6,
-  },
-  searchInput: {
-    flex: 1, // Dành không gian cho TextInput
-    height: 40,
-    paddingLeft: 8,
-  },
-  filterButton: {
-    backgroundColor: "orange",
-    padding: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    borderTopRightRadius: 6,
-    borderBottomRightRadius: 6,
-  },
-  filterContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  priceButton: {
+  statBox: {
     flex: 1,
-    marginHorizontal: 5,
+    alignItems: 'center',
     paddingVertical: 10,
-    backgroundColor: "gray",
-    borderRadius: 5,
-    justifyContent: "center",
-    alignItems: "center",
   },
-  activePriceButton: {
-    backgroundColor: "orange",
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: Colors.light.tint,
   },
-  sortButton: {
-    flex: 1,
-    marginHorizontal: 5,
-    paddingVertical: 10,
-    backgroundColor: "gray",
-    borderRadius: 5,
-    justifyContent: "center",
-    alignItems: "center",
+  statLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
   },
-  activeSortButton: {
-    backgroundColor: "orange",
-  },
-  buttonText: {
-    color: "white",
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)", // Màu nền tối
-  },
-  modalContent: {
-    width: "80%",
-    padding: 20,
-    backgroundColor: "white",
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    backgroundColor: '#f8f8f8',
+    margin: 15,
     borderRadius: 10,
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 20,
+  searchInput: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 16,
+    color: '#000',
+  },
+  list: {
+    paddingHorizontal: 15,
+    paddingBottom: 80,
+  },
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    gap: 15,
+  },
+  productImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0'
+  },
+  itemContent: {
+    flex: 1,
+  },
+  itemName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000',
+  },
+  itemPrice: {
+    fontSize: 14,
+    color: Colors.light.tint,
+    marginTop: 4,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    backgroundColor: Colors.light.tint,
+    width: 40,
+    height: 40,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
 });
